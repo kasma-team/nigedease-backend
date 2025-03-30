@@ -1,33 +1,30 @@
-import uuid
 from django.db import models
-from financial.models import Company  # Import Company from Financial app
+from django.utils import timezone
 
-class ProductUnit(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return f"{self.name} ({self.company.name})"
-
-class ProductCategory(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return f"{self.name} ({self.company.name})"
-
-class Product(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    category = models.ForeignKey(ProductCategory, on_delete=models.SET_NULL, null=True)
-    unit = models.ForeignKey(ProductUnit, on_delete=models.SET_NULL, null=True)
+class Category(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Categories"
+
     def __str__(self):
-        return f"{self.name} ({self.company.name})"
+        return self.name
+
+class Product(models.Model):
+    name = models.CharField(max_length=200)
+    description = models.TextField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['category']),
+        ]
+
+    def __str__(self):
+        return self.name

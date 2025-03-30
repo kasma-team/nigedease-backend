@@ -6,29 +6,43 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - postgres
+      mongodb:
+        condition: service_healthy
     environment:
-      - DATABASE_URL=postgres://postgres:password@postgres:5432/user_management_db
+      - DB_NAME=user_management_db
+      - DB_HOST=mongodb
+      - DB_PORT=27017
+      - DB_USER=admin
+      - DB_PASSWORD=password
 
   core_service:
     build: ./core_service
     ports:
       - "8001:8001"
     depends_on:
-      - postgres
+      mongodb:
+        condition: service_healthy
     environment:
-      - DATABASE_URL=postgres://postgres:password@postgres:5432/core_db
+      - DB_NAME=core_db
+      - DB_HOST=mongodb
+      - DB_PORT=27017
+      - DB_USER=admin
+      - DB_PASSWORD=password
 
-  postgres:
-    image: postgres:13 
-    environment: 
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: user_management_db
+  mongodb:
+    image: mongo:4.4
     ports:
-      - "5432:5432"
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongodb localhost:27017/test
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
 volumes:
-  postgres_data:
+  mongodb_data:

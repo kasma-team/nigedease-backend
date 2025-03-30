@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 class PaymentMode(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -97,18 +98,61 @@ class ExpenseCategory(models.Model):
     def __str__(self):
         return self.name
 
-class Expense(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    category = models.ForeignKey(ExpenseCategory, on_delete=models.CASCADE)
+class Transaction(models.Model):
+    TRANSACTION_TYPES = [
+        ('INCOME', 'Income'),
+        ('EXPENSE', 'Expense'),
+    ]
+    
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
-    payment_mode = models.ForeignKey(PaymentMode, on_delete=models.SET_NULL, null=True)
-    description = models.TextField(blank=True, null=True)
-    is_credit = models.BooleanField(default=False)
+    description = models.TextField()
+    date = models.DateField(default=timezone.now)
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['date']),
+            models.Index(fields=['transaction_type']),
+        ]
+
     def __str__(self):
-        return f"Expense {self.id} - {self.company.name}"
+        return f"{self.transaction_type} - {self.amount} - {self.date}"
+
+class Expense(models.Model):
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField()
+    category = models.CharField(max_length=100)
+    date = models.DateField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['date']),
+            models.Index(fields=['category']),
+        ]
+
+    def __str__(self):
+        return f"Expense - {self.amount} - {self.category}"
+
+class Income(models.Model):
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField()
+    source = models.CharField(max_length=100)
+    date = models.DateField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['date']),
+            models.Index(fields=['source']),
+        ]
+
+    def __str__(self):
+        return f"Income - {self.amount} - {self.source}"
 
 class Payable(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
