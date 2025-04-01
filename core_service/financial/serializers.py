@@ -1,150 +1,172 @@
 from rest_framework import serializers
-from .models import (
-    PaymentMode, Currency, SubscriptionPlan, Company, Sale, SaleItem, Purchase, PurchaseItem,
-    ExpenseCategory, Expense, Payable, Receivable, Bank, PaymentOut, PaymentIn, Report
-)
+# Remove model imports since we are using MongoDB directly
 
-class PaymentModeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PaymentMode
-        fields = ['id', 'name', 'description', 'created_at']
+class PaymentModeSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    name = serializers.CharField(required=True, max_length=255)
+    description = serializers.CharField(required=False, allow_null=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class CurrencySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Currency
-        fields = ['id', 'code', 'name', 'created_at']
+class CurrencySerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    code = serializers.CharField(required=True, max_length=3)
+    name = serializers.CharField(required=True, max_length=255)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class SubscriptionPlanSerializer(serializers.ModelSerializer):
-    currency = CurrencySerializer(read_only=True)
-    currency_id = serializers.UUIDField(write_only=True)
-    class Meta:
-        model = SubscriptionPlan
-        fields = ['id', 'name', 'price', 'currency', 'currency_id', 'description', 'created_at']
+class SubscriptionPlanSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    name = serializers.CharField(required=True, max_length=255)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+    currency = serializers.CharField(read_only=True)
+    currency_id = serializers.CharField(required=True)
+    description = serializers.CharField(required=False, allow_null=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class CompanySerializer(serializers.ModelSerializer):
-    subscription_plan = SubscriptionPlanSerializer(read_only=True)
-    subscription_plan_id = serializers.UUIDField(write_only=True, required=False)
-    payment_mode = PaymentModeSerializer(read_only=True)
-    payment_mode_id = serializers.UUIDField(write_only=True, required=False)
-    class Meta:
-        model = Company
-        fields = ['id', 'name', 'subscription_plan', 'subscription_plan_id', 'payment_mode', 'payment_mode_id', 'created_at', 'updated_at']
+class CompanySerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    name = serializers.CharField(required=True, max_length=255)
+    subscription_plan = serializers.CharField(read_only=True)
+    subscription_plan_id = serializers.CharField(required=False)
+    payment_mode = serializers.CharField(read_only=True)
+    payment_mode_id = serializers.CharField(required=False)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
 
-class SaleItemSerializer(serializers.ModelSerializer):
-    product_id = serializers.UUIDField(write_only=True)
-    class Meta:
-        model = SaleItem
-        fields = ['id', 'sale', 'product_id', 'quantity', 'unit_price', 'created_at']
+class SaleItemSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    sale_id = serializers.CharField(required=False)
+    product_id = serializers.CharField(required=True)
+    quantity = serializers.IntegerField(required=True)
+    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
 
-class SaleSerializer(serializers.ModelSerializer):
-    currency = CurrencySerializer(read_only=True)
-    currency_id = serializers.UUIDField(write_only=True)
-    payment_mode = PaymentModeSerializer(read_only=True)
-    payment_mode_id = serializers.UUIDField(write_only=True, required=False)
-    store_id = serializers.UUIDField(write_only=True)
-    items = SaleItemSerializer(many=True, write_only=True)
-    class Meta:
-        model = Sale
-        fields = ['id', 'company', 'store_id', 'customer_id', 'total_amount', 'currency', 'currency_id', 
-                  'payment_mode', 'payment_mode_id', 'is_credit', 'items', 'created_at']
-    def create(self, validated_data):
-        items_data = validated_data.pop('items')
-        sale = Sale.objects.create(**validated_data)
-        for item_data in items_data:
-            SaleItem.objects.create(sale=sale, **item_data)
-        return sale
+class SaleSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company = serializers.CharField(read_only=True)
+    company_id = serializers.CharField()
+    store_id = serializers.CharField(required=True)
+    customer_id = serializers.CharField(required=False, allow_null=True)
+    total_amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+    currency = serializers.CharField(read_only=True)
+    currency_id = serializers.CharField(required=True)
+    payment_mode = serializers.CharField(read_only=True)
+    payment_mode_id = serializers.CharField()
+    is_credit = serializers.BooleanField(default=False)
+    items = SaleItemSerializer(many=True, required=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class PurchaseItemSerializer(serializers.ModelSerializer):
-    product_id = serializers.UUIDField(write_only=True)
-    class Meta:
-        model = PurchaseItem
-        fields = ['id', 'purchase', 'product_id', 'quantity', 'unit_cost', 'created_at']
+class PurchaseItemSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    purchase = serializers.CharField(read_only=True)
+    product_id = serializers.CharField(required=True)
+    quantity = serializers.IntegerField(required=True)
+    unit_cost = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class PurchaseSerializer(serializers.ModelSerializer):
-    currency = CurrencySerializer(read_only=True)
-    currency_id = serializers.UUIDField(write_only=True)
-    payment_mode = PaymentModeSerializer(read_only=True)
-    payment_mode_id = serializers.UUIDField(write_only=True, required=False)
-    store_id = serializers.UUIDField(write_only=True)
-    items = PurchaseItemSerializer(many=True, write_only=True)
-    class Meta:
-        model = Purchase
-        fields = ['id', 'company', 'store_id', 'supplier_id', 'total_amount', 'currency', 'currency_id', 
-                  'payment_mode', 'payment_mode_id', 'is_credit', 'items', 'created_at']
-    def create(self, validated_data):
-        items_data = validated_data.pop('items')
-        purchase = Purchase.objects.create(**validated_data)
-        for item_data in items_data:
-            PurchaseItem.objects.create(purchase=purchase, **item_data)
-        return purchase
+class PurchaseSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company = serializers.CharField(read_only=True)
+    company_id = serializers.CharField()
+    store_id = serializers.CharField(required=True)
+    supplier_id = serializers.CharField(required=False, allow_null=True)
+    total_amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+    currency = serializers.CharField(read_only=True)
+    currency_id = serializers.CharField(required=True)
+    payment_mode = serializers.CharField(read_only=True)
+    payment_mode_id = serializers.CharField()
+    is_credit = serializers.BooleanField(default=False)
+    items = PurchaseItemSerializer(many=True, required=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class ExpenseCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ExpenseCategory
-        fields = ['id', 'company', 'name', 'description', 'created_at']
+class ExpenseCategorySerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company = serializers.CharField(read_only=True)
+    company_id = serializers.CharField()
+    name = serializers.CharField(required=True, max_length=255)
+    description = serializers.CharField(required=False, allow_null=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class ExpenseSerializer(serializers.ModelSerializer):
-    category = ExpenseCategorySerializer(read_only=True)
-    category_id = serializers.UUIDField(write_only=True)
-    currency = CurrencySerializer(read_only=True)
-    currency_id = serializers.UUIDField(write_only=True)
-    payment_mode = PaymentModeSerializer(read_only=True)
-    payment_mode_id = serializers.UUIDField(write_only=True, required=False)
-    class Meta:
-        model = Expense
-        fields = ['id', 'company', 'category', 'category_id', 'amount', 'currency', 'currency_id', 
-                  'payment_mode', 'payment_mode_id', 'description', 'is_credit', 'created_at']
+class ExpenseSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company = serializers.CharField(read_only=True)
+    company_id = serializers.CharField()
+    category = serializers.CharField(read_only=True)
+    category_id = serializers.CharField(required=True)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+    currency = serializers.CharField(read_only=True)
+    currency_id = serializers.CharField(required=True)
+    payment_mode = serializers.CharField(read_only=True)
+    payment_mode_id = serializers.CharField()
+    description = serializers.CharField(required=False, allow_null=True)
+    is_credit = serializers.BooleanField(default=False)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class PayableSerializer(serializers.ModelSerializer):
-    currency = CurrencySerializer(read_only=True)
-    currency_id = serializers.UUIDField(write_only=True)
-    purchase_id = serializers.UUIDField(write_only=True, required=False)
-    expense_id = serializers.UUIDField(write_only=True, required=False)
-    class Meta:
-        model = Payable
-        fields = ['id', 'company', 'type', 'purchase_id', 'expense_id', 'amount', 'currency', 'currency_id', 
-                  'due_date', 'created_at']
+class PayableSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company = serializers.CharField(read_only=True)
+    company_id = serializers.CharField()
+    type = serializers.CharField(required=True, max_length=50)
+    purchase_id = serializers.CharField(required=False)
+    expense_id = serializers.CharField(required=False)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+    currency = serializers.CharField(read_only=True)
+    currency_id = serializers.CharField(required=True)
+    due_date = serializers.DateField(required=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class ReceivableSerializer(serializers.ModelSerializer):
-    currency = CurrencySerializer(read_only=True)
-    currency_id = serializers.UUIDField(write_only=True)
-    sale_id = serializers.UUIDField(write_only=True)
-    class Meta:
-        model = Receivable
-        fields = ['id', 'company', 'sale_id', 'amount', 'currency', 'currency_id', 'due_date', 'created_at']
+class ReceivableSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company = serializers.CharField(read_only=True)
+    company_id = serializers.CharField()
+    sale_id = serializers.CharField(required=True)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+    currency = serializers.CharField(read_only=True)
+    currency_id = serializers.CharField(required=True)
+    due_date = serializers.DateField(required=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class BankSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Bank
-        fields = ['id', 'company', 'account_name', 'account_number', 'bank_name', 'created_at']
+class BankSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company = serializers.CharField(read_only=True)
+    company_id = serializers.CharField()
+    account_name = serializers.CharField(required=True, max_length=255)
+    account_number = serializers.CharField(required=True, max_length=50)
+    bank_name = serializers.CharField(required=True, max_length=255)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class PaymentOutSerializer(serializers.ModelSerializer):
-    currency = CurrencySerializer(read_only=True)
-    currency_id = serializers.UUIDField(write_only=True)
-    payment_mode = PaymentModeSerializer(read_only=True)
-    payment_mode_id = serializers.UUIDField(write_only=True, required=False)
-    payable_id = serializers.UUIDField(write_only=True, required=False)
-    expense_id = serializers.UUIDField(write_only=True, required=False)
-    bank_id = serializers.UUIDField(write_only=True, required=False)
-    class Meta:
-        model = PaymentOut
-        fields = ['id', 'company', 'type', 'payable_id', 'expense_id', 'amount', 'currency', 'currency_id', 
-                  'payment_mode', 'payment_mode_id', 'bank_id', 'created_at']
+class PaymentOutSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company = serializers.CharField(read_only=True)
+    company_id = serializers.CharField()
+    type = serializers.CharField(max_length=50, required=True)
+    payable_id = serializers.CharField(required=False)
+    expense_id = serializers.CharField(required=False)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+    currency = serializers.CharField(read_only=True)
+    currency_id = serializers.CharField(required=True)
+    payment_mode = serializers.CharField(read_only=True)
+    payment_mode_id = serializers.CharField(required=True)
+    bank_id = serializers.CharField(required=False)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class PaymentInSerializer(serializers.ModelSerializer):
-    currency = CurrencySerializer(read_only=True)
-    currency_id = serializers.UUIDField(write_only=True)
-    payment_mode = PaymentModeSerializer(read_only=True)
-    payment_mode_id = serializers.UUIDField(write_only=True, required=False)
-    receivable_id = serializers.UUIDField(write_only=True, required=False)
-    sale_id = serializers.UUIDField(write_only=True, required=False)
-    bank_id = serializers.UUIDField(write_only=True, required=False)
-    class Meta:
-        model = PaymentIn
-        fields = ['id', 'company', 'type', 'receivable_id', 'sale_id', 'amount', 'currency', 'currency_id', 
-                  'payment_mode', 'payment_mode_id', 'bank_id', 'created_at']
+class PaymentInSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company = serializers.CharField(read_only=True)
+    company_id = serializers.CharField()
+    type = serializers.CharField(max_length=50, required=True)
+    receivable_id = serializers.CharField(required=False)
+    sale_id = serializers.CharField(required=False)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+    currency = serializers.CharField(read_only=True)
+    currency_id = serializers.CharField(required=True)
+    payment_mode = serializers.CharField(read_only=True)
+    payment_mode_id = serializers.CharField(required=True)
+    bank_id = serializers.CharField(required=False)
+    created_at = serializers.DateTimeField(read_only=True)
 
-class ReportSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Report
-        fields = ['id', 'company', 'report_type', 'data', 'generated_at']
+class ReportSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company = serializers.CharField(read_only=True)
+    company_id = serializers.CharField()
+    report_type = serializers.CharField(max_length=100, required=True)
+    data = serializers.JSONField(required=True)
+    generated_at = serializers.DateTimeField(read_only=True)

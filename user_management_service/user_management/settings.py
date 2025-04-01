@@ -84,16 +84,15 @@ WSGI_APPLICATION = 'user_management.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+# MongoDB is used instead of PostgreSQL
+# MongoDB connection is established in user_management/mongodb.py
+# The application now uses pymongo directly for database operations
 
+# Django still needs a database configuration even if we're using MongoDB directly
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'user_management'),
-        'USER': os.getenv('DB_USER', 'user'),
-        'PASSWORD': os.getenv('DB_PASSWORD', '123'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -199,13 +198,13 @@ SIMPLE_JWT = {
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_USE_LOCALTIME = True 
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 465
-EMAIL_USE_SSL = True  
-EMAIL_USE_TLS = False  
-EMAIL_HOST_USER = 'mahfouz.teyib@a2sv.org'
-EMAIL_HOST_PASSWORD = 'geed wkhc aevs ajwr'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 465))
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True').lower() == 'true'
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False').lower() == 'true'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 EMAIL_TIMEOUT = 60
 
-# Custom user model
-AUTH_USER_MODEL = 'users.User'
+# User model
+AUTH_USER_MODEL = 'auth.User'

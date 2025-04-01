@@ -1,9 +1,9 @@
 import os
 from pathlib import Path
-from environ import Env
+import environ
 
-env = Env()
-Env.read_env()
+env = environ.Env()
+env.read_env()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -56,16 +56,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core_service.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'user_management'),
-        'USER': os.getenv('DB_USER', 'user'),
-        'PASSWORD': os.getenv('DB_PASSWORD', '123'), 
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
-    }
-}
+# MongoDB is used instead of PostgreSQL
+# MongoDB connection is established in core_service/mongodb.py
+# The application now uses pymongo directly for database operations
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -83,3 +76,16 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Django still needs a database configuration even though we're using MongoDB
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+# MongoDB settings
+MONGODB_URI = 'mongodb://mongo:27017/'
+MONGODB_NAME = 'core_service'
+USER_MANAGEMENT_SERVICE_URL = 'http://user_management_service:8000'

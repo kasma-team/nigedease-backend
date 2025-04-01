@@ -7,6 +7,7 @@ from rest_framework import status
 from django.http import Http404
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from typing import Dict, Any, cast
 
 class ActivityLogView(APIView):
 
@@ -19,8 +20,8 @@ class ActivityLogView(APIView):
       }
   )
   def get(self, request: Request):
-    activity_logs = ActivityLog.objects.all()
-    serializer = ActivityLogSerializer(activity_logs, many = True)
+    activity_logs = ActivityLog.get_all()
+    serializer = ActivityLogSerializer(activity_logs, many=True)
     return Response(data=serializer.data, status=status.HTTP_200_OK)
   
   @swagger_auto_schema(
@@ -34,19 +35,22 @@ class ActivityLogView(APIView):
       }
   )
   def post(self, request: Request):
-    serializer = ActivityLogSerializer(data = request.data)
-    if serializer.is_valid():
-      serializer.save()
-      return Response(data=serializer.data, status=status.HTTP_201_CREATED)
+    data = cast(Dict[str, Any], request.data)
+    activity_log = ActivityLog.create(
+        user_id=data.get('user'),
+        action=data.get('action'),
+        description=data.get('description', '')
+    )
+    serializer = ActivityLogSerializer(activity_log)
+    return Response(data=serializer.data, status=status.HTTP_201_CREATED)
 
 class ActivityLogDetailView(APIView):
 
   def get_activity_log(self, id):
-    try:
-      activity_log = ActivityLog.objects.get(pk = id)
-      return activity_log
-    except ActivityLog.DoesNotExist:
+    activity_log = ActivityLog.get_by_id(id)
+    if not activity_log:
       raise Http404
+    return activity_log
     
   @swagger_auto_schema(
       operation_summary="Get activity log detail",
@@ -93,11 +97,24 @@ class ActivityLogDetailView(APIView):
   )
   def put(self, request: Request, id):
     activity_log = self.get_activity_log(id)
-    serializer = ActivityLogSerializer(activity_log, data = request.data)
-    if serializer.is_valid():
-      serializer.save()
-      return Response(data=serializer.data, status=status.HTTP_200_OK)
-    return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    data = cast(Dict[str, Any], request.data)
+    
+    # Update fields
+    updated_data = {
+        "action": data.get('action', activity_log['action']),
+        "description": data.get('description', activity_log['description'])
+    }
+    
+    # We could add an update method to the ActivityLog class, but for now we'll use delete and create
+    ActivityLog.delete(id)
+    new_activity_log = ActivityLog.create(
+        user_id=activity_log['user_id'],
+        action=updated_data['action'],
+        description=updated_data['description']
+    )
+    
+    serializer = ActivityLogSerializer(new_activity_log)
+    return Response(data=serializer.data, status=status.HTTP_200_OK)
 
   @swagger_auto_schema(
       operation_summary="Delete activity log",
@@ -118,6 +135,6 @@ class ActivityLogDetailView(APIView):
       }
   )
   def delete(self, request: Request, id):
-    activity_log = self.get_activity_log(id)
-    activity_log.delete()
-    return Response({'message': 'Activity log deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+    self.get_activity_log(id)  # Check if it exists
+    ActivityLog.delete(id)
+    return Response(status=status.HTTP_204_NO_CONTENT)

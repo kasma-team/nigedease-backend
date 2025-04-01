@@ -18,7 +18,7 @@ class UserListView(APIView):
       }
   )
   def get(self, request: Request):
-    users = User.objects.all()
+    users = User.get_all()
     serializer = UserSerializer(users, many=True)
     return Response(data=serializer.data, status=status.HTTP_200_OK)
   
@@ -33,13 +33,11 @@ class UserListView(APIView):
       }
   )
 
-
   def post(self, request: Request):
-    print(request.data,11)
-    serializer = UserSerializer(data = request.data)
+    serializer = UserSerializer(data=request.data)
     if serializer.is_valid():
-      serializer.save()
-      return Response(data=serializer.data, status=status.HTTP_201_CREATED)
+      user = serializer.save()
+      return Response(data=user, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserDetailView(APIView):
@@ -63,12 +61,12 @@ class UserDetailView(APIView):
       }
   )
   def get(self, request: Request, id):
-    try:
-      user = User.objects.get(pk = id)
-      serializer = UserSerializer(user)
-      return Response(data=serializer.data, status=status.HTTP_200_OK)
-    except User.DoesNotExist:
-       return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+    user = User.get_by_id(id)
+    if not user:
+      return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = UserSerializer(user)
+    return Response(data=serializer.data, status=status.HTTP_200_OK)
 
   @swagger_auto_schema(
       operation_summary="Update user",
@@ -91,15 +89,15 @@ class UserDetailView(APIView):
       }
   )
   def put(self, request:Request, id):
-    try:
-      user = User.objects.get(pk = id)
-      serializer = UserSerializer(user, data = request.data)
-      if serializer.is_valid():
-        serializer.save()
-        return Response(data=serializer.data, status=status.HTTP_200_OK)
-      return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    except User.DoesNotExist:
+    user = User.get_by_id(id)
+    if not user:
       return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = UserSerializer(user, data=request.data)
+    if serializer.is_valid():
+      updated_user = serializer.save()
+      return Response(data=updated_user, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
   @swagger_auto_schema(
       operation_summary="Delete user",
@@ -120,9 +118,9 @@ class UserDetailView(APIView):
       }
   )
   def delete(self, request:Request, id):
-    try:
-      user = User.objects.get(pk = id)
-      user.delete()
-      return Response({'message': 'User deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
-    except User.DoesNotExist:
+    user = User.get_by_id(id)
+    if not user:
       return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    User.delete(id)
+    return Response({'message': 'User deleted successfully'}, status=status.HTTP_204_NO_CONTENT)

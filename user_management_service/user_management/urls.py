@@ -15,25 +15,57 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, get_resolver
+from django.conf import settings
+from django.conf.urls.static import static
+from django.http import JsonResponse
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
-schema_view = get_schema_view( 
+# Create schema view with proper documentation
+schema_view = get_schema_view(
     openapi.Info(
         title="User Management API",
-        default_version='1.0',
-        description="API for managing users",
+        default_version='v1',
+        description="API for user management operations",
+        contact=openapi.Contact(email="admin@example.com"),
+        license=openapi.License(name="Proprietary"),
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
-    url='http://localhost:8001',
 )
+
+def api_root(request):
+    return JsonResponse({
+        "message": "Welcome to User Management API",
+        "endpoints": {
+            "users": "/users/",
+            "roles": "/roles/",
+            "auth": "/auth/login/",
+            "documentation": "/api-docs/"
+        }
+    })
+
+def health_check(request):
+    return JsonResponse({"status": "healthy"})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('users.urls')),
+    path('', api_root, name='api-root'),
+    path('health/', health_check, name='health-check'),
+    
+    # Swagger documentation - place before other URLs to avoid collision
     path('api-docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-] 
+    path('api-docs/swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    
+    # API endpoints
+    path('', include('users.urls')),
+]
+
+# Add static file serving
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) 

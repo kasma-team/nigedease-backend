@@ -1,48 +1,41 @@
 from rest_framework import serializers
-from .models import ProductUnit, ProductCategory, Product
 
-class ProductUnitSerializer(serializers.ModelSerializer):
-    company_id = serializers.UUIDField(write_only=True)  # Add this to accept company_id directly
+class ProductUnitSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company_id = serializers.CharField(read_only=True)
+    name = serializers.CharField(max_length=255)
+    description = serializers.CharField(required=False, allow_null=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
-    class Meta:
-        model = ProductUnit
-        fields = ['id', 'company', 'name', 'description', 'created_at', 'company_id']
-        read_only_fields = ['id', 'company', 'created_at']  # company is read-only, set via company_id
+class ProductCategorySerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company_id = serializers.CharField(read_only=True)
+    name = serializers.CharField(max_length=255)
+    description = serializers.CharField(required=False, allow_null=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
-    def validate_company_id(self, value):
-        from financial.models import Company
-        if not Company.objects.filter(id=value).exists():
-            raise serializers.ValidationError(f"Company with id {value} does not exist.")
-        return value
+class ProductSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    company_id = serializers.CharField(read_only=True)
+    name = serializers.CharField(max_length=255)
+    description = serializers.CharField(required=False, allow_null=True)
+    category_id = serializers.CharField(required=False, allow_null=True)
+    unit_id = serializers.CharField(required=False, allow_null=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
 
-class ProductCategorySerializer(serializers.ModelSerializer):
-    company_id = serializers.UUIDField(write_only=True, required=False)  # Make it optional
-
-    class Meta:
-        model = ProductCategory
-        fields = ['id', 'company', 'name', 'description', 'created_at', 'company_id']
-        read_only_fields = ['id', 'company', 'created_at']  # company is read-only, set via company_id
-
-    def validate_company_id(self, value):
-        from financial.models import Company
-        if value and not Company.objects.filter(id=value).exists():  # Only validate if provided
-            raise serializers.ValidationError(f"Company with id {value} does not exist.")
-        return value 
-class ProductSerializer(serializers.ModelSerializer):
-    category = ProductCategorySerializer(read_only=True)
-    category_id = serializers.UUIDField(write_only=True, required=False)
-    unit = ProductUnitSerializer(read_only=True)
-    unit_id = serializers.UUIDField(write_only=True, required=False)
-    company_id = serializers.UUIDField(write_only=True)  # Add this to accept company_id directly
-
-    class Meta:
-        model = Product
-        fields = ['id', 'company', 'name', 'description', 'category', 'category_id', 'unit', 'unit_id', 
-                  'created_at', 'updated_at', 'company_id']
-        read_only_fields = ['id', 'company', 'created_at', 'updated_at']  # company is read-only, set via company_id
-
-    def validate_company_id(self, value):
-        from financial.models import Company
-        if not Company.objects.filter(id=value).exists():
-            raise serializers.ValidationError(f"Company with id {value} does not exist.")
-        return value
+    def create(self, validated_data):
+        from .models import Product
+        company_id = self.context['request'].company_id
+        return Product.create(
+            company_id=company_id,
+            name=validated_data['name'],
+            description=validated_data.get('description'),
+            category_id=validated_data.get('category_id'),
+            unit_id=validated_data.get('unit_id')
+        )
+    
+    def update(self, instance, validated_data):
+        from .models import Product
+        product_id = instance['id']
+        return Product.update(product_id, validated_data)

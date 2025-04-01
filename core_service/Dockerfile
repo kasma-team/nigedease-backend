@@ -7,12 +7,17 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
+# Install MongoDB dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Upgrade pip and install any needed packages specified in requirements.txt
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-# Make port 80 available to the world outside this container
+# Make port available to the world outside this container
 EXPOSE 8001
 
-
-# Run the Django migrations and then the development server when the container launches
-CMD ["sh", "-c", "python manage.py runserver 8001"]
+# Run the Django server when the container launches
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8001"]

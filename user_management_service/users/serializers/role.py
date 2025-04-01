@@ -1,24 +1,27 @@
 from rest_framework import serializers
 from ..models.role import Role, Permission, RolePermission
 
-class PermissionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Permission
-        fields = ['id', 'name', 'description', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+class PermissionSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True) 
+    name = serializers.CharField()
+    description = serializers.CharField(required=False, allow_blank=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
 
-class RoleSerializer(serializers.ModelSerializer):
-    permissions = PermissionSerializer(many=True, read_only=True)
-    permission_ids = serializers.ListField(
-        child=serializers.UUIDField(),
-        write_only=True,
-        required=False
-    )
+class RolePermissionSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    role_id = serializers.CharField()
+    permission_id = serializers.CharField()
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
 
-    class Meta:
-        model = Role
-        fields = ['id', 'name', 'description', 'permissions', 'permission_ids', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+class RoleSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    name = serializers.CharField()
+    description = serializers.CharField(required=False, allow_blank=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+    permissions = PermissionSerializer(many=True, required=False)
 
     def create(self, validated_data):
         permission_ids = validated_data.pop('permission_ids', [])
@@ -55,14 +58,4 @@ class RoleSerializer(serializers.ModelSerializer):
                     for permission in permissions
                 ])
 
-        return instance
-
-class RolePermissionSerializer(serializers.ModelSerializer):
-    permission_name = serializers.CharField(source='permission.name', read_only=True)
-    role_name = serializers.CharField(source='role.name', read_only=True)
-    
-    class Meta:
-        model = RolePermission
-        fields = ['id', 'role', 'role_name', 'permission', 'permission_name', 
-                 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at'] 
+        return instance 

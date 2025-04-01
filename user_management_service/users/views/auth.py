@@ -17,6 +17,9 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.parsers import JSONParser
+from datetime import datetime, timedelta
+import jwt
+from django.conf import settings
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -78,26 +81,23 @@ class LoginView(APIView):
         if not email or not password:
             return Response({"error": "Both email and password are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.filter(email=email).first()
+        user = User.get_by_email(email)
         
         if not user:
             return Response({"error": "User not found"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not check_password(password, user.password):
+        if not User.check_password(user, password):
             return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
 
         otp = get_random_string(length=6, allowed_chars='0123456789')
           
-        OTP.objects.update_or_create(
-            user=user,  
-            defaults={'otp': otp}  
-        )
+        OTP.create_or_update(user_id=user['id'], otp=otp)
 
         send_mail(
             'Your OTP Code',
             f'Your OTP is {otp}',
             'mahfouz.teyib@a2sv.org',
-            [user.email],
+            [user['email']],
             fail_silently=False,
         )
         
@@ -168,25 +168,36 @@ class VerifyOTPView(APIView):
         if not email or not otp:
             return Response({"error": "Both email and OTP are required"}, status=status.HTTP_400_BAD_REQUEST)
         
-        user = User.objects.filter(email=email).first()
+        user = User.get_by_email(email)
 
         if not user:
             return Response({"error": "User not found"}, status=status.HTTP_400_BAD_REQUEST)
         
-        otp_object = OTP.objects.filter(user=user, otp=otp).first()
+        otp_object = OTP.get_by_user_id(user['id'])
 
-        if not otp_object:
+        if not otp_object or otp_object['otp'] != otp:
             return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
         
-        if otp_object.is_expired():  
+        if OTP.is_expired(otp_object):
             return Response({"error": "OTP has expired"}, status=status.HTTP_400_BAD_REQUEST)
 
-        refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
+        # Generate JWT token
+        token_data = {
+            'user_id': user['id'],
+            'email': user['email'],
+            'exp': datetime.utcnow() + timedelta(days=1)
+        }
+        access_token = jwt.encode(token_data, settings.SECRET_KEY, algorithm='HS256')
+        
+        refresh_token_data = {
+            'user_id': user['id'],
+            'exp': datetime.utcnow() + timedelta(days=7)
+        }
+        refresh_token = jwt.encode(refresh_token_data, settings.SECRET_KEY, algorithm='HS256')
 
         return Response({
             'access': access_token,
-            'refresh': str(refresh)
+            'refresh': refresh_token
         }, status=status.HTTP_200_OK)
 
 class ResendOTPView(APIView):
@@ -242,23 +253,20 @@ class ResendOTPView(APIView):
         if not email:
             return Response({"error": "Email must be provided"}, status=status.HTTP_400_BAD_REQUEST)
         
-        user = User.objects.filter(email=email).first()
+        user = User.get_by_email(email)
 
         if not user:
             return Response({"error": "User not found"}, status=status.HTTP_400_BAD_REQUEST)
 
         otp = get_random_string(length=6, allowed_chars='0123456789')
           
-        OTP.objects.update_or_create(
-            user=user,  
-            defaults={'otp': otp}  
-        )
+        OTP.create_or_update(user_id=user['id'], otp=otp)
 
         send_mail(
             'Your OTP Code',
             f'Your OTP is {otp}',
             'mahfouz.teyib@a2sv.org',
-            [user.email],
+            [user['email']],
             fail_silently=False,
         )
 
