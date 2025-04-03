@@ -2,12 +2,13 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.exceptions import PermissionDenied
+from yaml import serialize
 from .models import (
     PaymentMode, Currency, SubscriptionPlan, Company, Sale, SaleItem, Purchase, PurchaseItem,
     ExpenseCategory, Expense, Payable, Receivable, Bank, PaymentOut, PaymentIn, Report
 )
 from .serializers import (
-    PaymentModeSerializer, CurrencySerializer, SubscriptionPlanSerializer, CompanySerializer,
+    PaymentModeSerializer, CurrencySerializer, SignupSerializer, SubscriptionPlanSerializer, CompanySerializer,
     SaleSerializer, SaleItemSerializer, PurchaseSerializer, PurchaseItemSerializer,
     ExpenseCategorySerializer, ExpenseSerializer, PayableSerializer, ReceivableSerializer,
     BankSerializer, PaymentOutSerializer, PaymentInSerializer, ReportSerializer
@@ -23,7 +24,7 @@ import uuid
 class VerifyTokenPermission(IsAuthenticated): 
     def has_permission(self, request, view):
         request.user_id = 1
-        request.company_id = 1
+        request.company_id = "26e85f7d-c095-40ba-a365-d7ed67281b3f" # Default company_id for testing
         return True         
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
         if not token:
@@ -43,17 +44,17 @@ class VerifyTokenPermission(IsAuthenticated):
         return False
     
 
-
-class SignupView(APIView): 
+class SignupView(APIView):  
     permission_classes = [AllowAny]  # Public endpoint for signup
-
+    serializer_class = SignupSerializer  # This tells DRF/Swagger about the request body
+    @swagger_auto_schema(request_body=SignupSerializer)
     def post(self, request):
         print(request.data)
         company_name = request.data.get('company_name')
         email = request.data.get('email')
         password = request.data.get('password')
         first_name = request.data.get('first_name')
-        last_name = request.data.get('last_name')
+        last_name = request.data.get('last_name') 
 
         # Check if a company with the same email already exists
         if Company.objects.filter(email=email).exists():
@@ -64,7 +65,7 @@ class SignupView(APIView):
             id=uuid.uuid4(),  # Fresh UUID for new company
             name=company_name,
             email=email,
-            is_active=True  # Active after receipt verification
+            is_active=True  
         ) 
     
         company.save()
@@ -95,39 +96,20 @@ class SignupView(APIView):
         return Response({
             "company_id": str(company.id),
             "message": "Company created successfully. Log in with your email and password."
-        }, status=status.HTTP_201_CREATED)
+        }, status=status.HTTP_201_CREATED) 
 
  
-class CompanyViewSet(viewsets.ModelViewSet):
+class CompanyViewSet(viewsets.ModelViewSet): 
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
     permission_classes = [VerifyTokenPermission]
 
     def get_queryset(self):
         # Filter to only the company associated with the token
-        company = Company.objects.get(id=self.request.company_id)
-        if not company.is_active:
-            raise PermissionDenied("Subscription inactive")
-        return self.queryset.filter(id=self.request.company_id)
+        company = Company.objects
+        return self.queryset
 
-    def perform_create(self, serializer):
-        # This is for authenticated users creating additional companies (unlikely in SaaS signup)
-        company = Company.objects.get(id=self.request.company_id)
-        if not company.is_active:
-            raise PermissionDenied("Subscription inactive")
-        
-        # Verify receipt for this edge case (e.g., admin adding a sub-company)
-        response = requests.post(
-            'http://localhost:8002/verify-receipt',
-            json=serializer.validated_data,  # Adjust based on what 8002 expects
-            headers={'Content-Type': 'application/json'}
-        )
-        if response.status_code == 200 and response.json().get('valid'):
-            serializer.save(id=uuid.uuid4())  # Generate new ID, not reuse request.company_id
-        else:
-            return Response({'error': 'Receipt verification failed'}, status=status.HTTP_400_BAD_REQUEST)
-
-    def perform_destroy(self, instance):
+    def perform_destroy(self, instance):  
         # Restrict deletion to admins
         token_response = requests.post(
             'http://127.0.0.1:8000/api/auth/verify-token/',
@@ -143,7 +125,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
 class TenantFilteredViewSet(viewsets.ModelViewSet):
     permission_classes = [VerifyTokenPermission]
 
-    def get_queryset(self):
+    def get_queryset(self): 
         company = Company.objects.get(id=self.request.company_id)
         if not company.is_active:
             raise PermissionDenied("Subscription inactive")
@@ -156,23 +138,42 @@ class TenantFilteredViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Subscription inactive")
         serializer.save(company_id=self.request.company_id)
 
-class PaymentModeViewSet(TenantFilteredViewSet):
+
+class PaymentModeViewSet(viewsets.ModelViewSet):
     queryset = PaymentMode.objects.all()
     serializer_class = PaymentModeSerializer
+    permission_classes = [VerifyTokenPermission]  # Keep authentication
 
-class CurrencyViewSet(TenantFilteredViewSet):
+    def get_queryset(self):
+        # No company_id filter, return all PaymentMode objects
+        return self.queryset
+
+    def perform_create(self, serializer):
+        # No company_id passed
+        serializer.save()
+class CurrencyViewSet(viewsets.ModelViewSet):
     queryset = Currency.objects.all()
     serializer_class = CurrencySerializer
+    permission_classes = [VerifyTokenPermission]
 
-class SubscriptionPlanViewSet(TenantFilteredViewSet):
+    def get_queryset(self):
+        return self.queryset  # No company_id filter
+
+    def perform_create(self, serializer):
+        serializer.save()  # No company_id passed
+class SubscriptionPlanViewSet(viewsets.ModelViewSet):
     queryset = SubscriptionPlan.objects.all()
     serializer_class = SubscriptionPlanSerializer
+    permission_classes = [VerifyTokenPermission]
+
 
 
 class SaleViewSet(TenantFilteredViewSet): 
     queryset = Sale.objects.all()
     serializer_class = SaleSerializer
-
+    def perform_create(self, serializer):
+        print(f"Using serializer: {self.serializer_class}")
+        super().perform_create(serializer)
 class SaleItemViewSet(TenantFilteredViewSet):
     queryset = SaleItem.objects.all()
     serializer_class = SaleItemSerializer
@@ -227,4 +228,4 @@ class PaymentInViewSet(TenantFilteredViewSet):
 
 class ReportViewSet(TenantFilteredViewSet): 
     queryset = Report.objects.all()
-    serializer_class = ReportSerializer
+    serializer_class = ReportSerializer 

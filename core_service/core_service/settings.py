@@ -8,7 +8,7 @@ Env.read_env()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = env.str('SECRET_KEY', default='-asdf&*YJHKP908yuik')
-DEBUG = env.bool('DEBUG', default=True)
+DEBUG = env.bool('DEBUG', default=True) # type: ignore
 
 ALLOWED_HOSTS = ['*']
 
@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'financial.apps.FinancialConfig',
     'product.apps.ProductConfig',
     'inventory.apps.InventoryConfig',
+    'djongo',  # Add Djongo here
 ]
 
 MIDDLEWARE = [
@@ -58,12 +59,12 @@ WSGI_APPLICATION = 'core_service.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'user_management'),
-        'USER': os.getenv('DB_USER', 'user'),
-        'PASSWORD': os.getenv('DB_PASSWORD', '123'), 
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+        'ENGINE': 'djongo',
+        'NAME': env.str('DB_NAME', 'core_service_db'),  # MongoDB database name
+        'CLIENT': {
+            'host': env.str('DB_HOST', 'localhost'),
+            'port': env.int('DB_PORT', 27017),  # Default MongoDB port # type: ignore
+        }
     }
 }
 

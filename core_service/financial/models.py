@@ -38,7 +38,8 @@ class Company(models.Model):
     stripe_customer_id = models.CharField(max_length=255, blank=True, null=True)
     stripe_subscription_id = models.CharField(max_length=255, blank=True, null=True)
     password = models.CharField(max_length=255, default='123456(*Udfjio)')
-
+    subscription_plan = models.ForeignKey(SubscriptionPlan, on_delete=models.SET_NULL, null=True)
+    payment_mode = models.ForeignKey(PaymentMode, on_delete=models.SET_NULL, null=True)
     def __str__(self):
         return self.name
 
