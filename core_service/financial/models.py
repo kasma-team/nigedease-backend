@@ -7,6 +7,8 @@ class PaymentMode(models.Model):
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     def __str__(self):
         return self.name
 
@@ -15,6 +17,8 @@ class Currency(models.Model):
     code = models.CharField(max_length=3, unique=True)
     name = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     def __str__(self):
         return f"{self.code} - {self.name}"
 
@@ -25,13 +29,26 @@ class SubscriptionPlan(models.Model):
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     def __str__(self):
         return self.name
  
 class Company(models.Model):
+    BUSINESS_TYPE_CHOICES = [
+        ('retail', 'Retail'),
+        ('manufacturing', 'Manufacturing'),
+        ('both', 'Both'),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     email = models.EmailField(unique=True, default='example@example.com')
+    short_name = models.CharField(max_length=10, blank=True, null=True)
+    address = models.CharField(max_length=100, blank=True, null=True)
+    business_type = models.CharField(max_length=20, choices=BUSINESS_TYPE_CHOICES, default='retail')
+    currency = models.ForeignKey(Currency, on_delete=models.PROTECT, null=True)
+    subscription_plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
@@ -42,50 +59,147 @@ class Company(models.Model):
     def __str__(self):
         return self.name
 
+class Customer(models.Model):
+    MEMBERSHIP_CHOICES = [
+        ('standard', 'Standard'),
+        ('silver', 'Silver'),
+        ('gold', 'Gold'),
+        ('platinum', 'Platinum'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100)
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    credit_limit = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    loyalty_points = models.IntegerField(default=0)
+    membership_level = models.CharField(max_length=20, choices=MEMBERSHIP_CHOICES, default='standard')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.name
+
+class Supplier(models.Model):
+    SUPPLIER_TYPE_CHOICES = [
+        ('fabric', 'Fabric'),
+        ('accessory', 'Accessory'),
+        ('packaging', 'Packaging'),
+        ('machinery', 'Machinery'),
+        ('other', 'Other'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100)
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    supplier_type = models.CharField(max_length=20, choices=SUPPLIER_TYPE_CHOICES, default='other')
+    lead_time_days = models.IntegerField(null=True, blank=True)
+    credit_limit = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.name
+
 class Sale(models.Model):
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('completed', 'Completed'),
+        ('returned', 'Returned'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
     store = models.ForeignKey('inventory.Store', on_delete=models.CASCADE)
-    customer_id = models.UUIDField(blank=True, null=True)
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
-    payment_mode = models.ForeignKey(PaymentMode, on_delete=models.SET_NULL, null=True)
+    customer = models.ForeignKey('Customer', on_delete=models.SET_NULL, null=True, blank=True)
+    total_amount = models.DecimalField(max_digits=19, decimal_places=4)
+    currency = models.ForeignKey(Currency, on_delete=models.CASCADE, null=True)
+    payment_mode = models.ForeignKey(PaymentMode, on_delete=models.SET_NULL, null=True, blank=True)
     is_credit = models.BooleanField(default=False)
+    invoice_number = models.CharField(max_length=20, blank=True, null=True)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='completed')
+    notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     def __str__(self):
         return f"Sale {self.id} - {self.company.name}"
 
 class SaleItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    sale = models.ForeignKey(Sale, on_delete=models.CASCADE)
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('product.Product', on_delete=models.CASCADE)
-    quantity = models.IntegerField()
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    product_variant = models.ForeignKey('product.ProductVariant', on_delete=models.CASCADE, null=True, blank=True)
+    quantity = models.DecimalField(max_digits=19, decimal_places=4)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     def __str__(self):
-        return f"SaleItem {self.id} - {self.product.name}"
+        base_str = f"SaleItem {self.id} - {self.product.name}"
+        if self.product_variant:
+            return f"{base_str} ({self.product_variant.size.name}/{self.product_variant.color.name})"
+        return base_str
 
 class Purchase(models.Model):
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('completed', 'Completed'),
+        ('returned', 'Returned'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
     store = models.ForeignKey('inventory.Store', on_delete=models.CASCADE)
-    supplier_id = models.UUIDField(blank=True, null=True)
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
-    payment_mode = models.ForeignKey(PaymentMode, on_delete=models.SET_NULL, null=True)
+    supplier = models.ForeignKey('Supplier', on_delete=models.SET_NULL, null=True, blank=True)
+    total_amount = models.DecimalField(max_digits=19, decimal_places=4)
+    currency = models.ForeignKey(Currency, on_delete=models.CASCADE, null=True)
+    payment_mode = models.ForeignKey(PaymentMode, on_delete=models.SET_NULL, null=True, blank=True)
     is_credit = models.BooleanField(default=False)
+    purchase_number = models.CharField(max_length=20, blank=True, null=True)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='completed')
+    notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     def __str__(self):
         return f"Purchase {self.id} - {self.company.name}"
 
 class PurchaseItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE)
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('product.Product', on_delete=models.CASCADE)
-    quantity = models.IntegerField()
-    unit_cost = models.DecimalField(max_digits=10, decimal_places=2)
+    product_variant = models.ForeignKey('product.ProductVariant', on_delete=models.CASCADE, null=True, blank=True)
+    material = models.ForeignKey('inventory.Material', on_delete=models.CASCADE, null=True, blank=True)
+    quantity = models.DecimalField(max_digits=19, decimal_places=4)
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def clean(self):
+        """Ensure that either product_variant or material is provided, but not both"""
+        if self.product_variant and self.material:
+            raise ValidationError("A purchase item can be associated with either a product variant or a material, not both.")
+    
     def __str__(self):
+        if self.product_variant:
+            return f"PurchaseItem {self.id} - {self.product.name} ({self.product_variant.size.name}/{self.product_variant.color.name})"
+        elif self.material:
+            return f"PurchaseItem {self.id} - Material: {self.material.name}"
         return f"PurchaseItem {self.id} - {self.product.name}"
 
 class ExpenseCategory(models.Model):

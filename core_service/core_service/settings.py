@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'financial.apps.FinancialConfig',
     'product.apps.ProductConfig',
     'inventory.apps.InventoryConfig',
+    'manufacturing.apps.ManufacturingConfig',
 ]
 
 MIDDLEWARE = [
@@ -56,14 +57,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core_service.wsgi.application'
 
+# PostgreSQL configuration
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'user_management'),
-        'USER': os.getenv('DB_USER', 'user'),
-        'PASSWORD': os.getenv('DB_PASSWORD', '123'), 
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+        'NAME': env.str('DB_NAME', default='core_service'),
+        'USER': env.str('DB_USER', default='postgres'),
+        'PASSWORD': env.str('DB_PASSWORD', default='postgres'),
+        'HOST': env.str('DB_HOST', default='localhost'),
+        'PORT': env.str('DB_PORT', default='5432'),
     }
 }
 
