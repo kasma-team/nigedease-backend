@@ -29,9 +29,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-a2_f2@06^39@o#r6+$w=+*!6o+u_k3ckuer@&di)vu(gfm4p9u')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = int(os.getenv('DEBUG', 0))
+DEBUG = True
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# Allow all hosts in DEBUG for internal container-to-container calls
+if DEBUG:
+    ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', 'user_management_service']
+else:
+    ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,user_management_service').split(',')
 
 
 # Application definition
@@ -61,7 +65,31 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# Add trusted hosts middleware at the top
+MIDDLEWARE.insert(0, 'user_management.middleware.AllowDockerHostsMiddleware')
+
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
+# Add specific allowed origins (add the frontend URL where you're making requests from)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:8001",
+    "http://127.0.0.1:8001"
+]
+
+# Add CSRF trusted origins
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:8001",
+    "http://127.0.0.1:8001"
+]
 ROOT_URLCONF = 'user_management.urls'
 
 TEMPLATES = [
@@ -161,10 +189,19 @@ SWAGGER_SETTINGS = {
         'patch',
     ],
     'VALIDATOR_URL': None,
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    },
     'SWAGGER_UI_SETTINGS': {
         'filter': False,
         'persistAuthorization': True,
         'displayOperationId': False,
+        'withCredentials': True,
+        'deepLinking': True
     },
     'SWAGGER_UI_DIST': 'SIDECAR',  # Use the sidecar instead
     'SWAGGER_UI_FAVICON_HREF': None,
@@ -197,7 +234,11 @@ SIMPLE_JWT = {
 }
 
 # Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# Use console backend in debug to print OTPs to the console
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_USE_LOCALTIME = True 
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 465

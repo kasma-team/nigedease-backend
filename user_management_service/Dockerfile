@@ -10,9 +10,16 @@ COPY . /app
 # Upgrade pip and install any needed packages specified in requirements.txt
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
+# Install netcat for database readiness check
+RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
+
+# Copy and enable the database wait-for script
+COPY wait-for-db.sh /wait-for-db.sh
+RUN chmod +x /wait-for-db.sh
+
 # Make port 80 available to the world outside this container
 EXPOSE 8000
 
-
 # Run the Django migrations and then the development server when the container launches
-CMD ["sh", "-c", "python manage.py runserver"]
+ENTRYPOINT ["/wait-for-db.sh"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

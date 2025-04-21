@@ -17,6 +17,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.parsers import JSONParser
+from django.conf import settings
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -101,6 +102,7 @@ class LoginView(APIView):
             fail_silently=False,
         )
         
+        # Don't return the OTP in the response, even in debug mode
         return Response({"message": "OTP sent to your email"}, status=status.HTTP_200_OK)
 
 class VerifyOTPView(APIView):

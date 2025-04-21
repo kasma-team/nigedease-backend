@@ -1,14 +1,14 @@
 import os
 from pathlib import Path
-from environ import Env
+import urllib.parse
 
-env = Env()
-Env.read_env()
+from dotenv import load_dotenv
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = env.str('SECRET_KEY', default='-asdf&*YJHKP908yuik')
-DEBUG = env.bool('DEBUG', default=True)
+SECRET_KEY = os.getenv('SECRET_KEY', default='-asdf&*YJHKP908yuik')
+DEBUG = os.getenv('DEBUG', default=True)
 
 ALLOWED_HOSTS = ['*']
 
@@ -21,10 +21,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'drf_yasg',
-    'financial.apps.FinancialConfig',
-    'product.apps.ProductConfig',
-    'inventory.apps.InventoryConfig',
-    'manufacturing.apps.ManufacturingConfig',
+    'companies',
+    'transactions',
+    'financials',
+    'inventory',
+    'clothing',
 ]
 
 MIDDLEWARE = [
@@ -35,6 +36,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core_service.middleware.AuthenticationMiddleware',
 ]
 
 ROOT_URLCONF = 'core_service.urls'
@@ -57,26 +59,56 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core_service.wsgi.application'
 
-# PostgreSQL configuration
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env.str('DB_NAME', default='core_service'),
-        'USER': env.str('DB_USER', default='postgres'),
-        'PASSWORD': env.str('DB_PASSWORD', default='postgres'),
-        'HOST': env.str('DB_HOST', default='localhost'),
-        'PORT': env.str('DB_PORT', default='5432'),
-    }
-}
+# Get the DATABASE_URL from environment
+database_url = os.getenv('DATABASE_URL')
 
+# Print database connection info for debugging
+print(f"Database URL: {database_url}")
+
+if database_url:
+    # Parse the URL
+    parsed_url = urllib.parse.urlparse(database_url)
+    
+    # Extract database connection details
+    db_config = {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': parsed_url.path[1:],  # Remove leading slash
+        'USER': parsed_url.username,
+        'PASSWORD': parsed_url.password,
+        'HOST': parsed_url.hostname,
+        'PORT': parsed_url.port or '5432',
+    }
+    
+    print(f"Database config: {db_config}")
+    
+    DATABASES = {'default': db_config}
+else:
+    # Fallback configuration
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('POSTGRES_DB', 'core_db'),
+            'USER': os.getenv('POSTGRES_USER', 'postgres'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgres'),
+            'HOST': 'postgres',  # Docker service name
+            'PORT': '5432',      # Default PostgreSQL port inside Docker
+        }
+    }
+    
+    print(f"Using fallback database config: {DATABASES['default']}")
+
+# Authentication settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'core_service.auth.UserManagementJWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
+
+# User Management Service settings
+USER_MANAGEMENT_SERVICE_URL = os.getenv('USER_MANAGEMENT_SERVICE_URL', 'http://user_management_service:8000')
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
