@@ -9,7 +9,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      - DB_NAME=user_management_db
+      - DB_NAME=user_management_service
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_HOST=postgres
@@ -27,7 +27,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      - DB_NAME=core_db
+      - DB_NAME=core_service
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_HOST=postgres
@@ -43,8 +43,8 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: core_db  # Set a default database
-      POSTGRES_MULTIPLE_DATABASES: user_management_db
+      POSTGRES_DB: core_service
+      POSTGRES_MULTIPLE_DATABASES: user_management_service
     ports:
       - "5433:5432"
     volumes:

@@ -45,6 +45,38 @@ class CompanyListView(APIView):
         return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class CompanyWithAdminCreateView(APIView):
+    @swagger_auto_schema(
+        operation_description="Create a new company with admin user",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['name', 'short_name', 'address', 'subscription_plan_id', 'currency_id', 
+                     'admin_email', 'admin_password', 'admin_first_name', 'admin_last_name'],
+            properties={
+                'name': openapi.Schema(type=openapi.TYPE_STRING, description='Company name'),
+                'short_name': openapi.Schema(type=openapi.TYPE_STRING, description='Company short name'),
+                'address': openapi.Schema(type=openapi.TYPE_STRING, description='Company address'),
+                'subscription_plan_id': openapi.Schema(type=openapi.TYPE_STRING, format='uuid', description='Subscription plan ID'),
+                'currency_id': openapi.Schema(type=openapi.TYPE_STRING, format='uuid', description='Currency ID'),
+                'admin_email': openapi.Schema(type=openapi.TYPE_STRING, format='email', description='Admin user email'),
+                'admin_password': openapi.Schema(type=openapi.TYPE_STRING, description='Admin user password'),
+                'admin_first_name': openapi.Schema(type=openapi.TYPE_STRING, description='Admin user first name'),
+                'admin_last_name': openapi.Schema(type=openapi.TYPE_STRING, description='Admin user last name'),
+            },
+        ),
+        responses={
+            201: CompanySerializer,
+            400: "Invalid data"
+        }
+    )
+    def post(self, request: Request):
+        serializer = CompanySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(data=serializer.data, status=status.HTTP_201_CREATED)
+        return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class CompanyDetailView(APIView):
     def get_company(self, id):
         try:

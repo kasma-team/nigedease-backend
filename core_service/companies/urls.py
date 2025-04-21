@@ -1,7 +1,8 @@
 from django.urls import path
 from companies.views.company import (
     CompanyListView,
-    CompanyDetailView
+    CompanyDetailView,
+    CompanyWithAdminCreateView
 )
 from companies.views.subscription_plan import (
     SubscriptionPlanListView,
@@ -16,6 +17,7 @@ urlpatterns = [
     # Company URLs
     path('companies/', CompanyListView.as_view(), name='company-list'),
     path('companies/<uuid:id>/', CompanyDetailView.as_view(), name='company-detail'),
+    path('companies/with-admin/', CompanyWithAdminCreateView.as_view(), name='company-with-admin-create'),
     
     # Subscription Plan URLs
     path('subscription-plans/', SubscriptionPlanListView.as_view(), name='subscription-plan-list'),
