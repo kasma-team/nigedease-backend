@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  core_service:
+    build: 
+      context: ./core_service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgres://postgres:password@postgres:5432/core_db
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG:-False}
+    depends_on:
+      - postgres
+    volumes:
+      - ./core_service:/app
+    networks:
+      - nigedease-network
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=core_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - nigedease-network
+
+  user_management:
+    build:
+      context: ./user_management_service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgres://postgres:password@postgres:5432/user_db
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG:-False}
+    depends_on:
+      - postgres
+    volumes:
+      - ./user_management_service:/app
+    networks:
+      - nigedease-network
+
+volumes:
+  postgres_data:
+
+networks:
+  nigedease-network:
+    driver: bridge 
