@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from environ import Env
+import dj_database_url
 
 env = Env()
 Env.read_env()
@@ -57,14 +58,10 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core_service.wsgi.application'
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'user_management'),
-        'USER': os.getenv('DB_USER', 'user'),
-        'PASSWORD': os.getenv('DB_PASSWORD', '123'), 
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
-    }
+    'default': dj_database_url.config(
+        default='postgres://postgres:password@postgres:5432/core_db',
+        conn_max_age=600
+    )
 }
 
 REST_FRAMEWORK = {

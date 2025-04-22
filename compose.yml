@@ -24,11 +24,20 @@ services:
     environment: 
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: user_management_db
+      POSTGRES_MULTIPLE_DATABASES: user_management_db,core_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    command: >
+      bash -c "
+        echo 'Waiting for PostgreSQL to start...'
+        while ! pg_isready -h localhost -p 5432; do sleep 1; done
+        echo 'PostgreSQL started'
+        psql -U postgres -c 'CREATE DATABASE core_db;'
+        psql -U postgres -c 'CREATE DATABASE user_management_db;'
+        echo 'Databases created'
+      "
 
 volumes:
   postgres_data:
