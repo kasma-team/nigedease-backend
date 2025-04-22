@@ -15,4 +15,6 @@ sqlparse==0.5.3
 typing_extensions==4.12.2
 uritemplate==4.1.1
 gunicorn==21.2.0
-python-dotenv==1.0.1 
+python-dotenv==1.0.1
+django-environ==0.11.2
+dj-database-url==2.1.0 
