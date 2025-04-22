@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   user_management_service:
@@ -8,7 +8,14 @@ services:
     depends_on:
       - postgres
     environment:
-      - DATABASE_URL=postgres://postgres:password@postgres:5432/user_management_db
+      - DB_NAME=user_management_db
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DEBUG=1
+      - ALLOWED_HOSTS=localhost,127.0.0.1
+    command: bash -c "python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
 
   core_service:
     build: ./core_service
@@ -17,18 +24,26 @@ services:
     depends_on:
       - postgres
     environment:
-      - DATABASE_URL=postgres://postgres:password@postgres:5432/core_db
+      - DB_NAME=core_db
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DEBUG=1
+      - ALLOWED_HOSTS=localhost,127.0.0.1
+    command: bash -c "python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8001"
 
   postgres:
-    image: postgres:13 
-    environment: 
+    image: postgres:13
+    environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: user_management_db
+      POSTGRES_MULTIPLE_DATABASES: user_management_db,core_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
 
 volumes:
   postgres_data:
