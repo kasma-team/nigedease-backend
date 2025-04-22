@@ -4,40 +4,47 @@ services:
   user_management_service:
     build: ./user_management_service
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       - DATABASE_URL=postgres://postgres:password@postgres:5432/user_management_db
+      - SECRET_KEY=django-insecure-development-key
+      - DEBUG=1
+    volumes:
+      - ./user_management_service:/app
 
   core_service:
     build: ./core_service
     ports:
-      - "8001:8001"
+      - "8000:8000"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       - DATABASE_URL=postgres://postgres:password@postgres:5432/core_db
+      - SECRET_KEY=django-insecure-development-key
+      - DEBUG=1
+    volumes:
+      - ./core_service:/app
 
   postgres:
     image: postgres:13 
     environment: 
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_MULTIPLE_DATABASES: user_management_db,core_db
+      POSTGRES_DB: postgres
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    command: >
-      bash -c "
-        echo 'Waiting for PostgreSQL to start...'
-        while ! pg_isready -h localhost -p 5432; do sleep 1; done
-        echo 'PostgreSQL started'
-        psql -U postgres -c 'CREATE DATABASE core_db;'
-        psql -U postgres -c 'CREATE DATABASE user_management_db;'
-        echo 'Databases created'
-      "
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

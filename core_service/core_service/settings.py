@@ -1,10 +1,10 @@
 import os
 from pathlib import Path
-from environ import Env
+import environ
 import dj_database_url
 
-env = Env()
-Env.read_env()
+env = environ.Env()
+env.read_env()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 

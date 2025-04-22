@@ -14,15 +14,15 @@ from pathlib import Path
 import os
 from datetime import timedelta
 from dotenv import load_dotenv
-from environ import Env
+import environ
 import dj_database_url
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Load environment variables
-env = Env()
-Env.read_env()
+env = environ.Env()
+env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -94,7 +94,7 @@ WSGI_APPLICATION = 'user_management.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default=env.str('DATABASE_URL', 'postgres://postgres:password@postgres:5432/user_db'),
+        default='postgres://postgres:password@postgres:5432/user_db',
         conn_max_age=600
     )
 }
