@@ -11,30 +11,15 @@ from drf_yasg import openapi
 
 
 class ExpenseCategoryListView(APIView):
-<<<<<<< HEAD
-    @swagger_auto_schema(
-        operation_description="Retrieve all expense categories",
-        responses={200: ExpenseCategorySerializer(many=True)},
-=======
     @extend_schema(
         description="Get a list of all expense categories",
         responses={200: ExpenseCategorySerializer(many=True)}
->>>>>>> origin/feature/core_service
     )
     def get(self, request: Request):
         expense_categories = ExpenseCategory.objects.all()
         serializer = ExpenseCategorySerializer(expense_categories, many=True)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
     
-<<<<<<< HEAD
-    @swagger_auto_schema(
-        operation_description="Create a new expense category",
-        request_body=ExpenseCategorySerializer,
-        responses={
-            201: ExpenseCategorySerializer,
-            400: "Bad Request",
-        },
-=======
     @extend_schema(
         description="Create a new expense category",
         request=ExpenseCategorySerializer,
@@ -42,7 +27,6 @@ class ExpenseCategoryListView(APIView):
             201: ExpenseCategorySerializer,
             400: OpenApiResponse(description="Invalid data")
         }
->>>>>>> origin/feature/core_service
     )
     def post(self, request: Request):
         serializer = ExpenseCategorySerializer(data=request.data)
@@ -59,12 +43,6 @@ class ExpenseCategoryDetailView(APIView):
             return category
         except ExpenseCategory.DoesNotExist:
             raise Http404
-<<<<<<< HEAD
-
-    @swagger_auto_schema(
-        operation_description="Retrieve a specific expense category by ID",
-        responses={200: ExpenseCategorySerializer, 404: "Not Found"},
-=======
     
     @extend_schema(
         description="Get a specific expense category by ID",
@@ -72,23 +50,12 @@ class ExpenseCategoryDetailView(APIView):
             200: ExpenseCategorySerializer,
             404: OpenApiResponse(description="Expense category not found")
         }
->>>>>>> origin/feature/core_service
     )
     def get(self, request: Request, id):
         category = self.get_category(id)
         serializer = ExpenseCategorySerializer(category)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
 
-<<<<<<< HEAD
-    @swagger_auto_schema(
-        operation_description="Update a specific expense category by ID",
-        request_body=ExpenseCategorySerializer,
-        responses={
-            200: ExpenseCategorySerializer,
-            400: "Bad Request",
-            404: "Not Found",
-        },
-=======
     @extend_schema(
         description="Update an expense category",
         request=ExpenseCategorySerializer,
@@ -97,7 +64,6 @@ class ExpenseCategoryDetailView(APIView):
             400: OpenApiResponse(description="Invalid data"),
             404: OpenApiResponse(description="Expense category not found")
         }
->>>>>>> origin/feature/core_service
     )
     def put(self, request: Request, id):
         category = self.get_category(id)
@@ -107,18 +73,12 @@ class ExpenseCategoryDetailView(APIView):
             return Response(data=serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-<<<<<<< HEAD
-    @swagger_auto_schema(
-        operation_description="Delete a specific expense category by ID",
-        responses={204: "No Content", 404: "Not Found"},
-=======
     @extend_schema(
         description="Delete an expense category",
         responses={
             204: OpenApiResponse(description="Expense category deleted successfully"),
             404: OpenApiResponse(description="Expense category not found")
         }
->>>>>>> origin/feature/core_service
     )
     def delete(self, request: Request, id):
         category = self.get_category(id)
