@@ -6,7 +6,12 @@ from rest_framework import status
 from typing import Dict, Any, cast
 from users.models.user import User
 from users.models.auth import OTP
+<<<<<<< Updated upstream
 from rest_framework.permissions import AllowAny
+=======
+from users.auth import get_tokens_for_user
+from rest_framework.permissions import AllowAny, IsAuthenticated
+>>>>>>> Stashed changes
 from django.contrib.auth.hashers import check_password
 from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
@@ -146,13 +151,10 @@ class VerifyOTPView(APIView):
         if otp_object.is_expired():
             return Response({"error": "OTP has expired"}, status=status.HTTP_400_BAD_REQUEST)
 
-        refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
-
-        return Response({
-            'access': access_token,
-            'refresh': str(refresh)
-        }, status=status.HTTP_200_OK)
+        # Generate tokens with role information
+        tokens = get_tokens_for_user(user)
+        
+        return Response(tokens, status=status.HTTP_200_OK)
 
 
 class ResendOTPView(APIView):
@@ -344,4 +346,9 @@ class VerifyTokenView(APIView):
             return Response(
                 {"error": "Token is invalid or expired"},
                 status=status.HTTP_400_BAD_REQUEST
+<<<<<<< Updated upstream
             )
+=======
+            )
+    
+>>>>>>> Stashed changes
